@@ -32,8 +32,8 @@ public class HttpSubscribersUtils {
      */
     public void getTopMovieData(Observable<HttpResult<List<Subject>>> observable,Subscriber<List<Subject>> subscriber){
         Observable observable2 = observable
-                .map(new HttpResultFunc<List<Subject>>());
-
+                .map(new HttpResultFunc<List<Subject>>())
+                .retryWhen(new RetryWithDelay(3, 10000)); //总共重试3次，重试间隔3000毫秒   遇到onError则会重试   而repeatWhen是当事件完成后重试  即onComplete
         toSubscribe(observable2, subscriber);
     }
 

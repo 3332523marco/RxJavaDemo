@@ -8,6 +8,7 @@ import android.view.View;
 import android.widget.Button;
 
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import javax.inject.Inject;
 
@@ -18,6 +19,7 @@ import rx.Observable;
 import rx.Observer;
 import rx.Subscriber;
 import rx.Subscription;
+import rx.android.schedulers.AndroidSchedulers;
 import rx.functions.Action0;
 import rx.functions.Action1;
 import rx.functions.Func1;
@@ -92,7 +94,71 @@ public class MainActivity extends BaseActivity {
     }
 
     private void testMap() {
+        //flatMap操作符的运行结果
+        /**
+         * flatMap操作符是把Observable产生的结果转换成多个Observable，然后把这多个Observable“扁平化”成一个Observable，并依次提交产生的结果给订阅者。
+         flatMap操作符通过传入一个函数作为参数转换源Observable，在这个函数中，你可以自定义转换规则，最后在这个函数中返回一个新的Observable，然后flatMap操作符通过合并这些Observable结果成一个Observable，并依次提交结果给订阅者。
+         值得注意的是，flatMap操作符在合并Observable结果时，有可能存在交叉的情况
+         */
+        Observable.just(10, 20, 30).flatMap(new Func1<Integer, Observable<Integer>>() {
+            @Override
+            public Observable<Integer> call(Integer integer) {
+                //10的延迟执行时间为200毫秒、20和30的延迟执行时间为180毫秒
+                int delay = 200;
+                if (integer > 10)
+                    delay = 180;
 
+                return Observable.from(new Integer[]{integer, integer / 2}).delay(delay, TimeUnit.MILLISECONDS);
+            }
+        }).observeOn(AndroidSchedulers.mainThread()).subscribe(new Action1<Integer>() {
+            @Override
+            public void call(Integer integer) {
+                Log.i(TAG, "flatMap Next: " + integer);
+            }
+        });
+
+        //concatMap操作符的运行结果
+        /**
+         * cancatMap操作符与flatMap操作符类似，都是把Observable产生的结果转换成多个Observable，然后把这多个Observable“扁平化”成一个Observable，并依次提交产生的结果给订阅者。
+         与flatMap操作符不同的是，concatMap操作符在处理产生的Observable时，采用的是“连接(concat)”的方式，而不是“合并(merge)”的方式，这就能保证产生结果的顺序性，也就是说提交给订阅者的结果是按照顺序提交的，不会存在交叉的情况。
+         */
+        Observable.just(10, 20, 30).concatMap(new Func1<Integer, Observable<Integer>>() {
+            @Override
+            public Observable<Integer> call(Integer integer) {
+                //10的延迟执行时间为200毫秒、20和30的延迟执行时间为180毫秒
+                int delay = 200;
+                if (integer > 10)
+                    delay = 180;
+
+                return Observable.from(new Integer[]{integer, integer / 2}).delay(delay, TimeUnit.MILLISECONDS);
+            }
+        }).observeOn(AndroidSchedulers.mainThread()).subscribe(new Action1<Integer>() {
+            @Override
+            public void call(Integer integer) {
+                Log.i(TAG, "concatMap Next: " + integer);
+            }
+        });
+
+        //switchMap操作符的运行结果
+        /**
+         * switchMap操作符会保存最新的Observable产生的结果而舍弃旧的结果
+         */
+        Observable.just(10, 20, 30).switchMap(new Func1<Integer, Observable<Integer>>() {
+            @Override
+            public Observable<Integer> call(Integer integer) {
+                //10的延迟执行时间为200毫秒、20和30的延迟执行时间为180毫秒
+                int delay = 200;
+                if (integer > 10)
+                    delay = 180;
+
+                return Observable.from(new Integer[]{integer, integer / 2}).delay(delay, TimeUnit.MILLISECONDS);
+            }
+        }).observeOn(AndroidSchedulers.mainThread()).subscribe(new Action1<Integer>() {
+            @Override
+            public void call(Integer integer) {
+                Log.i(TAG, "switchMap Next: " + integer);
+            }
+        });
         Observable.just(mStudent1, mStudent2, mStudent3)
                 //使用map进行转换，参数1：转换前的类型，参数2：转换后的类型
                 .map(new Func1<Student, String>() {
@@ -137,6 +203,9 @@ public class MainActivity extends BaseActivity {
     }
 
     private void testFilter() {
+        /**
+         * filter操作符是对源Observable产生的结果按照指定条件进行过滤，只有满足条件的结果才会提交给订阅者
+         */
         Observable.just(mStudent1, mStudent2, mStudent3)
                 //使用map进行转换，参数1：转换前的类型，参数2：转换后的类型
                 .filter(new Func1<Student, Boolean>() {
@@ -251,6 +320,7 @@ public class MainActivity extends BaseActivity {
     public void loadNetService(int start, int count) {
         HttpSubscribersUtils.getInstance().getTopMovieData(netApiService.getTopMovie(start, count),new ProgressSubscriber(new SubscriberOnNextListener<List<Subject>>() {
             @Override
+
             public void onNext(List<Subject> subjects) {
                 Log.i(TAG, "loadNetService onNext " + subjects.toString());
             }
