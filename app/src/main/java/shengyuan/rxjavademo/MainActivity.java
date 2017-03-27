@@ -22,6 +22,7 @@ import rx.Subscription;
 import rx.android.schedulers.AndroidSchedulers;
 import rx.functions.Action0;
 import rx.functions.Action1;
+import rx.functions.Func0;
 import rx.functions.Func1;
 import rx.schedulers.Schedulers;
 import rx.subscriptions.Subscriptions;
@@ -47,6 +48,8 @@ public class MainActivity extends BaseActivity {
     Button testThread;
     @Bind(R.id.testRetrofit)
     Button testRetrofit;
+    @Bind(R.id.testDefer)
+    Button testDefer;
 
     @PoetryQualifier("A")
     @Inject
@@ -75,7 +78,7 @@ public class MainActivity extends BaseActivity {
                 .inject(this);
     }
 
-    @OnClick({R.id.testMap, R.id.testFilter, R.id.testThread,R.id.testRetrofit})
+    @OnClick({R.id.testMap, R.id.testFilter, R.id.testThread, R.id.testRetrofit,R.id.testDefer})
     public void onClick(View view) {
         switch (view.getId()) {
             case R.id.testMap:
@@ -86,6 +89,9 @@ public class MainActivity extends BaseActivity {
                 break;
             case R.id.testThread:
                 testThread();
+                break;
+            case R.id.testDefer:
+                testDefer();
                 break;
             case R.id.testRetrofit:
                 loadNetService(0, 10);
@@ -206,6 +212,10 @@ public class MainActivity extends BaseActivity {
         /**
          * filter操作符是对源Observable产生的结果按照指定条件进行过滤，只有满足条件的结果才会提交给订阅者
          */
+        /**
+         * from和just的区别：
+         * from会依次返回list的每个item，而just会直接把list返回相当于输入什么返回什么。
+         */
         Observable.just(mStudent1, mStudent2, mStudent3)
                 //使用map进行转换，参数1：转换前的类型，参数2：转换后的类型
                 .filter(new Func1<Student, Boolean>() {
@@ -317,8 +327,53 @@ public class MainActivity extends BaseActivity {
                 });
     }
 
-    public void loadNetService(int start, int count) {
-        HttpSubscribersUtils.getInstance().getTopMovieData(netApiService.getTopMovie(start, count),new ProgressSubscriber(new SubscriberOnNextListener<List<Subject>>() {
+    int value;
+
+    private void testDefer(){
+        /**
+         * 直到有订阅，才会创建Observable
+         * 具有延时的效果。
+         *
+         * just()，from()这类能够创建Observable的操作符在创建之初，就已经存储了对象的值，而不被订阅的时候。
+         *
+         * 使用defer()操作符的唯一缺点就是，每次订阅都会创建一个新的Observable对象。
+         * create()操作符则为每一个订阅者都使用同一个函数，所以，后者效率更高。一如既往地，如果有必要可以亲测性能或者尝试优化。
+         */
+
+        value = 10;
+        Observable<String> o1 = Observable.just("just result: " + value);
+        value = 12;
+        o1.subscribe(new Action1<String>() {
+
+            @Override
+            public void call(String t) {
+                Log.i(TAG, "testDefer just call "+t);
+            }
+        });
+
+        value = 12;
+        Observable<String> o2 =
+                Observable.defer(new Func0<Observable<String>>() {
+
+                    @Override
+                    public Observable<String> call() {
+                        return Observable.just("defer result: " + value);
+                    }
+                });
+        value = 20;
+
+        o2.subscribe(new Action1<String>() {
+
+            @Override
+            public void call(String t) {
+                Log.i(TAG, "testDefer call "+t);
+            }
+        });
+
+    }
+
+    private void loadNetService(int start, int count) {
+        HttpSubscribersUtils.getInstance().getTopMovieData(netApiService.getTopMovie(start, count), new ProgressSubscriber(new SubscriberOnNextListener<List<Subject>>() {
             @Override
 
             public void onNext(List<Subject> subjects) {
@@ -326,5 +381,4 @@ public class MainActivity extends BaseActivity {
             }
         }, MainActivity.this));
     }
-
 }
