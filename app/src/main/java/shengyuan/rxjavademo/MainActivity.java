@@ -2,7 +2,7 @@ package shengyuan.rxjavademo;
 
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
-import android.os.Bundle;
+import android.content.Intent;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -13,7 +13,6 @@ import java.util.concurrent.TimeUnit;
 import javax.inject.Inject;
 
 import butterknife.Bind;
-import butterknife.ButterKnife;
 import butterknife.OnClick;
 import rx.Observable;
 import rx.Observer;
@@ -27,6 +26,8 @@ import rx.functions.Func1;
 import rx.schedulers.Schedulers;
 import rx.subscriptions.Subscriptions;
 import shengyuan.rxjavademo.component.MainAppComponent;
+import shengyuan.rxjavademo.data.EventCenter;
+import shengyuan.rxjavademo.data.HttpResult;
 import shengyuan.rxjavademo.data.Student;
 import shengyuan.rxjavademo.data.Subject;
 import shengyuan.rxjavademo.net.NetApiService;
@@ -34,6 +35,7 @@ import shengyuan.rxjavademo.scope.PoetryQualifier;
 import shengyuan.rxjavademo.subscribers.HttpSubscribersUtils;
 import shengyuan.rxjavademo.subscribers.ProgressSubscriber;
 import shengyuan.rxjavademo.subscribers.SubscriberOnNextListener;
+import shengyuan.rxjavademo.util.Constants;
 
 
 public class MainActivity extends BaseActivity {
@@ -66,19 +68,36 @@ public class MainActivity extends BaseActivity {
     NetApiService netApiService;
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-        ButterKnife.bind(this);
-    }
-
-    @Override
     protected void setupActivityComponent(MainAppComponent mainAppComponent) {
         mainAppComponent
                 .inject(this);
     }
 
-    @OnClick({R.id.testMap, R.id.testFilter, R.id.testThread, R.id.testRetrofit,R.id.testDefer})
+    @Override
+    protected int getContentViewLayoutID() {
+        return R.layout.activity_main;
+    }
+
+    @Override
+    protected void initViewsAndEvents() {
+
+    }
+
+    @Override
+    protected boolean isBindRxBusHere() {
+        return true;
+    }
+
+    @Override
+    protected void onEventComing(EventCenter eventCenter) {
+        switch (eventCenter.getEventCode()) {
+            case Constants.EVENT_BUS.EVENT_BUS_TYPE_MAIN:
+                Log.i(TAG, "rxbus from SecondActivity: " + (String)eventCenter.getData());
+                break;
+        }
+    }
+
+    @OnClick({R.id.testMap, R.id.testFilter, R.id.testThread, R.id.testRetrofit,R.id.testDefer,R.id.testRxBus})
     public void onClick(View view) {
         switch (view.getId()) {
             case R.id.testMap:
@@ -96,8 +115,32 @@ public class MainActivity extends BaseActivity {
             case R.id.testRetrofit:
                 loadNetService(0, 10);
                 break;
+            case R.id.testRxBus:
+                startActivity(new Intent(mContext,SecondActivity.class));
+                break;
         }
     }
+
+    /**
+     * rxlifecycle 框架的使用
+     *
+     * 让你的activity继承RxActivity,RxAppCompatActivity,RxFragmentActivity
+     * 让你的fragment继承RxFragment,RxDialogFragment;
+     *
+     * bindToLifecycle 方法
+     * 在子类使用Observable中的compose操作符，调用，完成Observable发布的事件和当前的组件绑定，实现生命周期同步。从而实现当前组件生命周期结束时，自动取消对Observable订阅。
+     *
+     * .compose(this.<Long>bindUntilEvent(ActivityEvent.STOP ))   //当Activity执行Onstop()方法是解除订阅关系
+     * bindUntilEvent( ActivityEvent event)
+     * ActivityEvent.CREATE: 在Activity的onCreate()方法执行后，解除绑定。
+     * ActivityEvent.START:在Activity的onStart()方法执行后，解除绑定。
+     * ActivityEvent.RESUME:在Activity的onResume()方法执行后，解除绑定。
+     * ActivityEvent.PAUSE: 在Activity的onPause()方法执行后，解除绑定。
+     * ActivityEvent.STOP:在Activity的onStop()方法执行后，解除绑定。
+     * ActivityEvent.DESTROY:在Activity的onDestroy()方法执行后，解除绑定。
+     * 本实例中统一加了bindToLifecycle 来统一绑定其当前activity的生命周期
+     *
+     */
 
     private void testMap() {
         //flatMap操作符的运行结果
@@ -106,7 +149,7 @@ public class MainActivity extends BaseActivity {
          flatMap操作符通过传入一个函数作为参数转换源Observable，在这个函数中，你可以自定义转换规则，最后在这个函数中返回一个新的Observable，然后flatMap操作符通过合并这些Observable结果成一个Observable，并依次提交结果给订阅者。
          值得注意的是，flatMap操作符在合并Observable结果时，有可能存在交叉的情况
          */
-        Observable.just(10, 20, 30).flatMap(new Func1<Integer, Observable<Integer>>() {
+        Observable.just(10, 20, 30).compose(this.<Integer>bindToLifecycle()).flatMap(new Func1<Integer, Observable<Integer>>() {
             @Override
             public Observable<Integer> call(Integer integer) {
                 //10的延迟执行时间为200毫秒、20和30的延迟执行时间为180毫秒
@@ -121,14 +164,15 @@ public class MainActivity extends BaseActivity {
             public void call(Integer integer) {
                 Log.i(TAG, "flatMap Next: " + integer);
             }
-        });
+        })  //这个订阅关系跟Activity绑定，Observable 和activity生命周期同步
+        ;
 
         //concatMap操作符的运行结果
         /**
          * cancatMap操作符与flatMap操作符类似，都是把Observable产生的结果转换成多个Observable，然后把这多个Observable“扁平化”成一个Observable，并依次提交产生的结果给订阅者。
          与flatMap操作符不同的是，concatMap操作符在处理产生的Observable时，采用的是“连接(concat)”的方式，而不是“合并(merge)”的方式，这就能保证产生结果的顺序性，也就是说提交给订阅者的结果是按照顺序提交的，不会存在交叉的情况。
          */
-        Observable.just(10, 20, 30).concatMap(new Func1<Integer, Observable<Integer>>() {
+        Observable.just(10, 20, 30).compose(this.<Integer>bindToLifecycle()).concatMap(new Func1<Integer, Observable<Integer>>() {
             @Override
             public Observable<Integer> call(Integer integer) {
                 //10的延迟执行时间为200毫秒、20和30的延迟执行时间为180毫秒
@@ -149,7 +193,7 @@ public class MainActivity extends BaseActivity {
         /**
          * switchMap操作符会保存最新的Observable产生的结果而舍弃旧的结果
          */
-        Observable.just(10, 20, 30).switchMap(new Func1<Integer, Observable<Integer>>() {
+        Observable.just(10, 20, 30).compose(this.<Integer>bindToLifecycle()).switchMap(new Func1<Integer, Observable<Integer>>() {
             @Override
             public Observable<Integer> call(Integer integer) {
                 //10的延迟执行时间为200毫秒、20和30的延迟执行时间为180毫秒
@@ -165,7 +209,7 @@ public class MainActivity extends BaseActivity {
                 Log.i(TAG, "switchMap Next: " + integer);
             }
         });
-        Observable.just(mStudent1, mStudent2, mStudent3)
+        Observable.just(mStudent1, mStudent2, mStudent3).compose(this.<Student>bindToLifecycle())
                 //使用map进行转换，参数1：转换前的类型，参数2：转换后的类型
                 .map(new Func1<Student, String>() {
                     @Override
@@ -190,7 +234,7 @@ public class MainActivity extends BaseActivity {
             public void call(Subscriber<? super List<Student>> subscriber) {
                 subscriber.onNext(mList);
             }
-        }).flatMap(new Func1<List<Student>, Observable<Student>>() {
+        }).compose(this.<List<Student>>bindToLifecycle()).flatMap(new Func1<List<Student>, Observable<Student>>() {
             @Override
             public Observable<Student> call(List<Student> users) {
                 return Observable.from(users);
@@ -216,7 +260,7 @@ public class MainActivity extends BaseActivity {
          * from和just的区别：
          * from会依次返回list的每个item，而just会直接把list返回相当于输入什么返回什么。
          */
-        Observable.just(mStudent1, mStudent2, mStudent3)
+        Observable.just(mStudent1, mStudent2, mStudent3).compose(this.<Student>bindToLifecycle())
                 //使用map进行转换，参数1：转换前的类型，参数2：转换后的类型
                 .filter(new Func1<Student, Boolean>() {
 
@@ -232,7 +276,7 @@ public class MainActivity extends BaseActivity {
                     }
                 });
 
-        Observable.from(mList)
+        Observable.from(mList).compose(this.<Student>bindToLifecycle())
                 .filter(new Func1<Student, Boolean>() {
                     @Override
                     public Boolean call(Student student) {
@@ -294,7 +338,7 @@ public class MainActivity extends BaseActivity {
              * subscribeOn(): 是指subscribe()所发生的线程，即Observable.OnSubscibe被激活时所处的线程，或者事件产生的的线程
              observeOn() 指定Subscriber所运行的线程，或者叫做事件消费的线程
              */
-        }).subscribeOn(Schedulers.io())
+        }).compose(this.<BluetoothDevice>bindToLifecycle()).subscribeOn(Schedulers.io())
                 .observeOn(Schedulers.newThread()).subscribe(new Subscriber<BluetoothDevice>() {
                     /**
                      * AndroidSchedulers.mainThread() 可设为在主线程
@@ -341,7 +385,7 @@ public class MainActivity extends BaseActivity {
          */
 
         value = 10;
-        Observable<String> o1 = Observable.just("just result: " + value);
+        Observable<String> o1 = Observable.just("just result: " + value).compose(this.<String>bindToLifecycle());
         value = 12;
         o1.subscribe(new Action1<String>() {
 
@@ -359,7 +403,7 @@ public class MainActivity extends BaseActivity {
                     public Observable<String> call() {
                         return Observable.just("defer result: " + value);
                     }
-                });
+                }).compose(this.<String>bindToLifecycle());
         value = 20;
 
         o2.subscribe(new Action1<String>() {
@@ -373,7 +417,7 @@ public class MainActivity extends BaseActivity {
     }
 
     private void loadNetService(int start, int count) {
-        HttpSubscribersUtils.getInstance().getTopMovieData(netApiService.getTopMovie(start, count), new ProgressSubscriber(new SubscriberOnNextListener<List<Subject>>() {
+        HttpSubscribersUtils.getInstance().getTopMovieData(netApiService.getTopMovie(start, count).compose(this.<HttpResult<List<Subject>>>bindToLifecycle()), new ProgressSubscriber(new SubscriberOnNextListener<List<Subject>>() {
             @Override
 
             public void onNext(List<Subject> subjects) {

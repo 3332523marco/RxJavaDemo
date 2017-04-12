@@ -8,6 +8,7 @@ import javax.inject.Singleton;
 
 import dagger.Component;
 import shengyuan.rxjavademo.MainActivity;
+import shengyuan.rxjavademo.SecondActivity;
 import shengyuan.rxjavademo.data.Student;
 import shengyuan.rxjavademo.module.MainAppModule;
 import shengyuan.rxjavademo.module.NetServiceModule;
@@ -26,6 +27,7 @@ public interface MainAppComponent {
     List<Student> getList();
 
     MainActivity inject(MainActivity mainActivity);//Dagger2会从目标类开始查找@Inject注解，自动生成依赖注入的代码，调用inject可完成依赖的注入。
+    SecondActivity inject(SecondActivity secondActivity);//Dagger2会从目标类开始查找@Inject注解，自动生成依赖注入的代码，调用inject可完成依赖的注入。
 
     NetApiService getNetApiService();
 
