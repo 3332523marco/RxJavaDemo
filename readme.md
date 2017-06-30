@@ -50,4 +50,4 @@ RxJava 的观察者模式大致如下图：
                          Log.i(TAG,"testFor 2 "+student.name);
                     }
                 });
-                ```
+             
