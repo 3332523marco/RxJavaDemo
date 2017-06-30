@@ -298,7 +298,7 @@ public class MainActivity extends BaseActivity {
 
                 return Observable.from(new Integer[]{integer, integer / 2}).delay(delay, TimeUnit.MILLISECONDS);
             }
-        }).observeOn(AndroidSchedulers.mainThread()).subscribe(new Action1<Integer>() {
+        }).observeOn(AndroidSchedulers.mainThread()).subscribe(new Action1<Integer  >() {
             @Override
             public void call(Integer integer) {
                 Log.i(TAG, "concatMap Next: " + integer);
