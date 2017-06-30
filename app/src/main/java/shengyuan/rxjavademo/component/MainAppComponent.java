@@ -2,8 +2,6 @@ package shengyuan.rxjavademo.component;
 
 import android.app.Application;
 
-import java.util.List;
-
 import javax.inject.Singleton;
 
 import dagger.Component;
@@ -24,7 +22,6 @@ import shengyuan.rxjavademo.scope.PoetryQualifier;
 public interface MainAppComponent {
     Application getApplication();
 
-    List<Student> getList();
 
     MainActivity inject(MainActivity mainActivity);//Dagger2会从目标类开始查找@Inject注解，自动生成依赖注入的代码，调用inject可完成依赖的注入。
     SecondActivity inject(SecondActivity secondActivity);//Dagger2会从目标类开始查找@Inject注解，自动生成依赖注入的代码，调用inject可完成依赖的注入。
@@ -39,4 +36,7 @@ public interface MainAppComponent {
 
     @PoetryQualifier("C")
     Student getStudent3();
+
+    @PoetryQualifier("D")
+    Student getStudent4();
 }

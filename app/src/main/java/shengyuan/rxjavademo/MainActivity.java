@@ -7,6 +7,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -62,8 +63,15 @@ public class MainActivity extends BaseActivity {
     @PoetryQualifier("C")
     @Inject
     Student mStudent3;
+    @PoetryQualifier("D")
+    @Inject
+    Student mStudent4;
+    @PoetryQualifier("list")
     @Inject
     List<Student> mList;
+    @PoetryQualifier("list2")
+    @Inject
+    List<Student> mList2;
     @Inject
     NetApiService netApiService;
 
@@ -97,11 +105,74 @@ public class MainActivity extends BaseActivity {
         }
     }
 
-    @OnClick({R.id.testMap, R.id.testFilter, R.id.testThread, R.id.testRetrofit,R.id.testDefer,R.id.testRxBus})
+    List<Student> students;
+
+    @OnClick({R.id.testMap, R.id.testFilter, R.id.testThread, R.id.testRetrofit,R.id.testDefer,R.id.testRxBus,R.id.testFor})
     public void onClick(View view) {
         switch (view.getId()) {
             case R.id.testMap:
-                testMap();
+//                Observable.just(mList).flatMap(new Func1<List<Student>, Observable<?>>() {
+//                    @Override
+//                    public Observable<?> call(List<Student> s) {
+//                        return Observable.just(s);
+//                    }
+//                }).subscribe(new Action1<Object>() {
+//                    @Override
+//                    public void call(Object o) {
+//                        List<Student> l = (List<Student>) o;
+//                        Log.i(TAG, "flatMap mList: " + l.size());
+//                    }
+//                });
+                students = new ArrayList<>();
+                students.add(new Student("1"));
+                students.add(new Student("test2"));
+//
+//                Observable.from(students).subscribe(new Action1<Student>() {
+//                    @Override
+//                    public void call(final Student ts) {
+//                        Log.i(TAG, "flatMap subscribe: " + ts);
+//                        Observable.from(mList).subscribe(new Action1<Student>() {
+//                            @Override
+//                            public void call(Student s) {
+//                                if(s.name.equals(ts.name)){
+//                                    Log.i(TAG, "flatMap equals: " + ts);
+//                                }else{
+//                                    Log.i(TAG, "flatMap Next: " + ts);
+//                                }
+//                            }
+//                        });
+//                    }
+//                });
+
+                Observable.just(mList).flatMap(new Func1<List<Student>, Observable<Student>>(){
+
+                    @Override
+                    public Observable<Student> call(List<Student> students) {
+                        //10的延迟执行时间为200毫秒、20和30的延迟执行时间为180毫秒
+
+
+                        return Observable.from(students);
+                    }
+                }).observeOn(AndroidSchedulers.mainThread()).subscribe(new Action1<Student>() {
+                    @Override
+                    public void call(Student integer) {
+                        Log.i(TAG, "flatMap Next: " + integer);
+                    }
+                })  //这个订阅关系跟Activity绑定，Observable 和activity生命周期同步
+                ;
+//                Observable.just(mList).subscribe(new Action1<List<Student>>() {
+//                    @Override
+//                    public void call(List<Student> list) {
+//                        Observable.from(list).subscribe(new Action1<Student>() {
+//                            @Override
+//                            public void call(Student s) {
+//                                Log.d("qin>>>","这不是一个标准写法！"+s);
+//                            }
+//                        });
+//                    }
+//                });
+
+//                testMap();
                 break;
             case R.id.testFilter:
                 testFilter();
@@ -118,8 +189,53 @@ public class MainActivity extends BaseActivity {
             case R.id.testRxBus:
                 startActivity(new Intent(mContext,SecondActivity.class));
                 break;
+            case R.id.testFor:
+                testFor();
+                break;
         }
     }
+
+    Student student1;
+
+    private void testFor(){
+
+        for(Student student : mList){
+            for(Student student2 : mList2){
+                if(student.name.equals(student2.name)){
+                    Log.i(TAG,"testFor 1 "+student.name);
+                }
+            }
+        }
+
+        Observable.from(mList)
+                .flatMap(new Func1<Student, Observable<Student>>() {
+                    @Override
+                    public Observable<Student> call(Student student) {
+                        student1 = student;
+                        return Observable.from(mList2);
+                    }
+                })
+                .filter(new Func1<Student, Boolean>() {
+                    @Override
+                    public Boolean call(Student student) {
+                        return student1.name.equals(student.name);
+                    }
+                })
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(new Action1<Student>() {
+                    @Override
+                    public void call(Student student) {
+                         Log.i(TAG,"testFor 2 "+student.name);
+                    }
+                });
+    }
+
+    /**
+     * RxJava最核心的两个东西是Observables（被观察者，事件源）和Subscribers（观察者）。Observables发出一系列事件，Subscribers处理这些事件。这里的事件可以是任何你感兴趣的东西（触摸事件，web接口调用返回的数据。。。）
+     * 一个Observable可以发出零个或者多个事件，知道结束或者出错。每发出一个事件，就会调用它的Subscriber的onNext方法，最后调用Subscriber.onNext()或者Subscriber.onError()结束。
+     * Rxjava的看起来很想设计模式中的观察者模式，但是有一点明显不同，那就是如果一个Observerble没有任何的的Subscriber，那么这个Observable是不会发出任何事件的。
+     */
 
     /**
      * rxlifecycle 框架的使用

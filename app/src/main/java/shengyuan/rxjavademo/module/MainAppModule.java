@@ -30,12 +30,23 @@ public class MainAppModule {
         return application;
     }
 
+    @PoetryQualifier("list")
     @Provides
     List<Student> provideList() {
         List<Student> list = new ArrayList<>();
         list.add(provideStudent1());
         list.add(provideStudent2());
         list.add(provideStudent3());
+        return list;
+    }
+
+    @PoetryQualifier("list2")
+    @Provides
+    List<Student> provideList2() {
+        List<Student> list = new ArrayList<>();
+        list.add(provideStudent1());
+        list.add(provideStudent3());
+        list.add(provideStudent4());
         return list;
     }
 
@@ -55,5 +66,11 @@ public class MainAppModule {
     @Provides
     Student provideStudent3() {
         return new Student("test3");
+    }
+
+    @PoetryQualifier("D")
+    @Provides
+    Student provideStudent4() {
+        return new Student("test4");
     }
 }
